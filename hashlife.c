@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <errno.h>  
 #include <stdlib.h>
@@ -5,8 +6,18 @@
 #include <stdbool.h>
 
 #include "quadrotree.h"
+#include "args.h"
 
 #define CMP(str, arg) (memcmp(str, arg, sizeof(str)) == 0)
+
+void usage(char *name)
+{
+    printf(
+        "usage:\n"
+        "\t%s init DEPTH [LIMIT]\n",
+        name
+    );
+}
 
 int main(int argc, char **argv)
 {
@@ -14,10 +25,26 @@ int main(int argc, char **argv)
     {
         goto error;
     }
-    if (CMP("quad", argv[1]))
+    if (CMP("init", argv[1]))
     {
-        QTREE *tree = QTree_init(10);
-        QTree_print(tree, 2);
+        if (argc < 3)
+        {
+            goto error;
+        }
+
+        unsigned int depth, limit = 0;
+        if (parse_uint(argv[2], &depth)) {
+            goto error;
+        }
+
+        if (argc > 3) {
+            if (argc > 3 && parse_uint(argv[3], &limit)) {
+                goto error;
+            }
+        }
+
+        QTREE *tree = QTree_init(depth);
+        QTree_print(tree, limit);
         // QTree_free(tree);
     } else {
         goto error;
@@ -25,7 +52,8 @@ int main(int argc, char **argv)
     return 0;
 
 error:
-    errno = 2;
+    errno = EINVAL;
     perror("hashlife");
+    usage(argv[0]);
     exit(errno);
 }

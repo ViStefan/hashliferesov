@@ -1,6 +1,6 @@
-CFLAGS=-g
+CFLAGS=-g -std=c99 -Wall -Werror -Wextra -pedantic
 CPPFLAGS=-I .
-hashlife: hashlife.c quadrotree.c
+hashlife: hashlife.c quadrotree.c args.c
 
 clear:
 	rm hashlife
