@@ -8,6 +8,7 @@
 #include "args.h"
 #include "hash.h"
 #include "quadrotree.h"
+#include "typedefs.h"
 
 #define CMP(str, arg) (memcmp (str, arg, sizeof (str)) == 0)
 
@@ -48,8 +49,10 @@ main (int argc, char **argv)
             }
         }
 
-      QTREE *tree = QTree_init (depth);
+      HASH *hash = Hash_init (&QTree_hash);
+      QTREE *tree = QTree_init (depth, hash);
       QTree_print (tree, limit);
+      printf("hash size: %lu\n", Hash_size(hash));
       // QTree_free(tree);
     }
   else if (CMP ("test", argv[1]))

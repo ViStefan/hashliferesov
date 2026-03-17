@@ -19,7 +19,7 @@ ecalloc (size_t nmemb, size_t size)
 
 struct Pair
 {
-  KEY key;
+  KEY_T key;
   void *value;
 };
 
@@ -51,11 +51,11 @@ Hash_size (HASH *hash)
 bool
 has_key (void *element, void *load)
 {
-  return ((PAIR *)element)->key == *((KEY *)load);
+  return ((PAIR *)element)->key == *((KEY_T *)load);
 }
 
 void
-Hash_insert (HASH *hash, KEY key, void *value)
+Hash_insert (HASH *hash, KEY_T key, void *value)
 {
   size_t index = hash->f (key);
 
@@ -71,12 +71,13 @@ Hash_insert (HASH *hash, KEY key, void *value)
   key_value->key = key;
   key_value->value = value;
   List_prepend (list, key_value);
+  hash->size++;
 }
 
 // int Hash_remove(HASH *hash, KEY key);
 
 void *
-Hash_get (HASH *hash, KEY key)
+Hash_get (HASH *hash, KEY_T key)
 {
   size_t index = hash->f (key);
   LIST *list;

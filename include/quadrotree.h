@@ -1,6 +1,9 @@
 #ifndef QUADROTREE_H
 #define QUADROTREE_H 1
 
+#include <stddef.h>
+
+#include "typedefs.h"
 #define LEAF 4
 
 /*
@@ -8,8 +11,6 @@
     -----
     2 | 3
 */
-
-typedef struct QTree QTREE;
 
 struct QTree
 {
@@ -22,8 +23,9 @@ struct QTree
   int level;
 };
 
-QTREE *QTree_init (int depth);
+QTREE *QTree_init (int depth, HASH *hash);
 void QTree_print (QTREE *tree, int limit);
+size_t QTree_hash (QTREE *node);
 // void QTree_free(QTREE *tree);
 
 #endif
