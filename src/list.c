@@ -1,35 +1,40 @@
-#include "list.h"
 #include <stdlib.h>
+
+#include "list.h"
 
 struct List
 {
-    void *value;
-    LIST *next;
+  void *value;
+  LIST *next;
 };
 
-void List_prepend(LIST **list, void *value)
+void
+List_prepend (LIST **list, void *value)
 {
-    LIST *node = malloc(sizeof(LIST));
-    node->value = value;
-    node->next = *(list);
-    *(list) = node;
+  LIST *node = malloc (sizeof (LIST));
+  node->value = value;
+  node->next = *(list);
+  *(list) = node;
 }
 
-void *List_search(LIST *list, bool (*predicate)(void *element, void *load), void *load)
+void *
+List_search (LIST *list, bool (*predicate) (void *element, void *load),
+             void *load)
 {
-    if (!list)
+  if (!list)
     {
-        return NULL;
+      return NULL;
     }
 
-    do {
-        if (predicate(list->value, load))
+  do
+    {
+      if (predicate (list->value, load))
         {
-            return list->value;
+          return list->value;
         }
-        list = list->next;
-    } while (list);
+      list = list->next;
+    }
+  while (list);
 
-    return NULL;
+  return NULL;
 }
-

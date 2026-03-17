@@ -1,60 +1,63 @@
 #include <assert.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-#include "quadrotree.h"
 #include "hash.h"
+#include "quadrotree.h"
 
-QTREE *QTree_init(int depth)
+QTREE *
+QTree_init (int depth)
 {
-    assert(depth > 0);
+  assert (depth > 0);
 
-    QTREE *tree, *leaf;
+  QTREE *tree, *leaf;
 
-    tree = (QTREE *)malloc(sizeof(QTREE));
-    tree->data.bits = 0;
-    tree->level = 0;
+  tree = (QTREE *)malloc (sizeof (QTREE));
+  tree->data.bits = 0;
+  tree->level = 0;
 
-    for (int l = 1; l < depth; l++)
+  for (int l = 1; l < depth; l++)
     {
-        leaf = tree;
-        tree = (QTREE *)malloc(sizeof(QTREE));
-        tree->level = l;
-        for (int i = 0; i < LEAF; i++)
+      leaf = tree;
+      tree = (QTREE *)malloc (sizeof (QTREE));
+      tree->level = l;
+      for (int i = 0; i < LEAF; i++)
         {
-            tree->data.leaf[i] = leaf;
+          tree->data.leaf[i] = leaf;
         }
     }
 
-    return tree;
+  return tree;
 }
 
-void _print_impl(QTREE *root, int tabs, int x, int y, int limit)
+void
+_print_impl (QTREE *root, int tabs, int x, int y, int limit)
 {
-    printf("%d: (%d, %d) x %d\n", root->level, x, y, 1 << root->level);
-    for (int i = 0; i < LEAF; i++)
+  printf ("%d: (%d, %d) x %d\n", root->level, x, y, 1 << root->level);
+  for (int i = 0; i < LEAF; i++)
     {
-        if (root->level > limit)
+      if (root->level > limit)
         {
-            for (int t = 0; t < tabs + 1; t++)
+          for (int t = 0; t < tabs + 1; t++)
             {
-                printf("\t");
+              printf ("\t");
             }
-            printf("%d: ", i);
+          printf ("%d: ", i);
 
-            const int size = 1 << root->data.leaf[i]->level;
-            const int _x = x + size * (i % 2);
-            const int _y = y + size * (i > 1);
-            _print_impl(root->data.leaf[i], tabs + 1, _x, _y, limit);
+          const int size = 1 << root->data.leaf[i]->level;
+          const int _x = x + size * (i % 2);
+          const int _y = y + size * (i > 1);
+          _print_impl (root->data.leaf[i], tabs + 1, _x, _y, limit);
         }
     }
 }
 
-void QTree_print(QTREE *tree, int limit)
+void
+QTree_print (QTREE *tree, int limit)
 {
-    assert(limit >= 0);
+  assert (limit >= 0);
 
-    _print_impl(tree, 0, 0, 0, limit);
+  _print_impl (tree, 0, 0, 0, limit);
 }
 
 // void QTree_free(QTREE *tree);
