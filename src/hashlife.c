@@ -8,16 +8,8 @@
 #include "quadrotree.h"
 #include "args.h"
 #include "hash.h"
-#include "test.h"
 
 #define CMP(str, arg) (memcmp(str, arg, sizeof(str)) == 0)
-
-/*
-size_t hash_fn(KEY key)
-{
-    return (size_t)(key % TABLE_SIZE);
-}
-*/
 
 void usage(char *name)
 {
