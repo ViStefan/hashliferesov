@@ -8,6 +8,7 @@
 #include "args.h"
 #include "config.h"
 #include "hash.h"
+#include "plaintext.h"
 #include "quadrotree.h"
 #include "typedefs.h"
 
@@ -18,8 +19,10 @@ usage (char *name)
 {
   printf ("usage:\n"
           "\t%s init DEPTH [LIMIT]\n"
-          "\t%s --version|-v\n"
-          , name, name);
+          "\t%s read FILE\n"
+          "\t%s --version|-v\n",
+          // TODO: how long could it be?
+          name, name, name);
 }
 
 int
@@ -60,6 +63,15 @@ main (int argc, char **argv)
     {
       printf ("%s\n", PACKAGE_STRING);
       return 0;
+    }
+  else if (CMP ("read", argv[1]))
+    {
+      if (argc < 3)
+        {
+          goto error;
+        }
+
+      Plaintext_read (argv[2]);
     }
   else
     {
