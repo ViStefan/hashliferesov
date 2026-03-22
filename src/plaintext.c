@@ -27,6 +27,16 @@ Plaintext_read (char *path)
   bool in_comment = false;
   // size_t pattern_begin = 0; /* seek point */
 
+  /* TODO: it allows mixing comments and pattern lines which is not claimed as
+     legitimate format in https://conwaylife.com/wiki/Plaintext
+     If we cope with realloc some previous buffers if width changed, we can
+     implement one-pass giving pattern data, not only counting measures.
+     It's also required to get width of the first pattern line before allocation which is doable so:
+      1. skip comments, store file position of pattern start
+      2. look for '\n' counting bytes
+      3. seek back to pattern start
+      4. process file in one-pass
+     */
   while ((read = fread (line, 1, PLAINTEXT_BUF_SIZE, text)))
     {
       ptr = line;
@@ -57,6 +67,12 @@ Plaintext_read (char *path)
                 length++;
             }
         }
+    }
+
+  if (!feof (text) || ferror (text))
+    {
+      perror ("plaintext");
+      exit (errno);
     }
 
   printf ("max_line_len: %lu\n", width);
