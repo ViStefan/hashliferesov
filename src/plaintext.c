@@ -2,7 +2,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/param.h>
 
 #include "plaintext.h"
@@ -23,8 +22,8 @@ Plaintext_read (char *path)
     }
 
   char *line = (char *)malloc (PLAINTEXT_BUF_SIZE);
-  size_t width = 0,     /* max length of line in pattern file */
-         height = 0;    /* number of pattern file lines excluding comments */
+  size_t width = 0, /* max length of line in pattern file */
+      height = 0;   /* number of pattern file lines excluding comments */
   size_t length = 0, read;
   char *ptr, c;
   bool in_string = false;
