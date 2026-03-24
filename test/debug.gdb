@@ -1,5 +1,5 @@
 break Plaintext_read
-set args read glider.cells
+set args read glider_r.cells
 run
 display line
 display c

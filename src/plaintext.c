@@ -1,4 +1,3 @@
-#include <asm-generic/errno-base.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -9,7 +8,7 @@
 #include "plaintext.h"
 #define PLAINTEXT_BUF_SIZE 8
 
-enum _FSM_STMT
+typedef enum 
 {
   START = 0,
   COMMENT,
@@ -17,19 +16,19 @@ enum _FSM_STMT
   PATTERN,
   NL_PATTERN,
   ERROR
-};
+} STATE;
 
 typedef struct STMT
 {
-  int stmt_num; /*statement; value from enum*/
-  bool unget;   /*bool flag indicating whether to read new char*/
+  STATE state;  /*statement; value from enum*/
+  bool unget; /*bool flag indicating whether to read new char*/
 } STMT;
 
 static void
 _update_sizes (size_t *length, size_t *width, size_t *height)
 {
   (*height)++;
-  (*width) = MAX (*length, *width);
+  *width = MAX (*length, *width);
   *length = 0;
 }
 
@@ -42,35 +41,35 @@ _read_pattern_chunk (STMT *stmt, char c, size_t *length, size_t *width,
     case '.':
     case 'O':
       (*length)++;
-      stmt->stmt_num = PATTERN;
+      stmt->state = PATTERN;
       break;
 
     case '\r':
-      stmt->stmt_num = NL_PATTERN;
+      stmt->state = NL_PATTERN;
       _update_sizes (length, width, height);
       break;
 
     case '\n':
-      stmt->stmt_num = PATTERN;
+      stmt->state = PATTERN;
       _update_sizes (length, width, height);
       break;
 
     default:
-      stmt->stmt_num = ERROR;
+      stmt->state = ERROR;
     }
 }
 
 static void
 _check_newline (STMT *stmt, char c)
 {
-  stmt->unget = (c == '\n') ? (false) : (true);
-  if (stmt->stmt_num == NL_PATTERN)
+  stmt->unget = (c != '\n');
+  if (stmt->state == NL_PATTERN)
     {
-      stmt->stmt_num = PATTERN;
+      stmt->state = PATTERN;
     }
-  else if (stmt->stmt_num == NL_COMMENT)
+  else if (stmt->state == NL_COMMENT)
     {
-      stmt->stmt_num = START;
+      stmt->state = START;
     }
 }
 
@@ -80,13 +79,13 @@ _read_comment_chunk (STMT *stmt, char c)
   switch (c)
     {
     case '\r':
-      stmt->stmt_num = NL_COMMENT;
+      stmt->state = NL_COMMENT;
       break;
     case '\n':
-      stmt->stmt_num = START;
+      stmt->state = START;
       break;
     default:
-      stmt->stmt_num = COMMENT;
+      stmt->state = COMMENT;
       break;
     }
 }
@@ -108,7 +107,7 @@ Plaintext_read (char *path)
   char *ptr, c;
 
   STMT *stmt = (STMT *)malloc (sizeof (STMT)); /*statement struct for FSM*/
-  stmt->stmt_num = START;
+  stmt->state = START;
   stmt->unget = false;
 
   while ((read = fread (line, 1, PLAINTEXT_BUF_SIZE, text)))
@@ -118,33 +117,28 @@ Plaintext_read (char *path)
 
       while (ptr < line + read)
         {
+          c = *ptr;
           if (!stmt->unget)
-            {
-              c = *(ptr++);
-            }
-          else
-            {
-              c = *ptr;
-              stmt->unget = false;
-            }
+            ptr++;
+          stmt->unget = false;
 
-          switch (stmt->stmt_num)
+          switch (stmt->state)
             {
             case START:
               switch (c)
                 {
                 case '!':
-                  stmt->stmt_num = COMMENT;
+                  stmt->state = COMMENT;
                   break;
                 case '.':
                 case 'O':
                 case '\n':
                 case '\r':
-                  stmt->stmt_num = PATTERN;
+                  stmt->state = PATTERN;
                   stmt->unget = true;
                   break;
                 default:
-                  stmt->stmt_num = ERROR;
+                  stmt->state = ERROR;
                   break;
                 }
               break;
@@ -181,6 +175,7 @@ Plaintext_read (char *path)
   printf ("linenum: %lu\n", height);
   // TODO: now init BYTESBUFFER with this params
 
+  fclose (text);
   free (stmt);
   free (line);
 
