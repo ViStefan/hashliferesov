@@ -8,7 +8,7 @@
 #include "plaintext.h"
 #define PLAINTEXT_BUF_SIZE 8
 
-typedef enum 
+typedef enum
 {
   START = 0,
   COMMENT,
@@ -20,8 +20,8 @@ typedef enum
 
 typedef struct STMT
 {
-  STATE state;  /*statement; value from enum*/
-  bool unget; /*bool flag indicating whether to read new char*/
+  STATE state; /*statement; value from enum*/
+  bool stay;  /*flag indicating whether to read new char*/
 } STMT;
 
 static void
@@ -62,7 +62,7 @@ _read_pattern_chunk (STMT *stmt, char c, size_t *length, size_t *width,
 static void
 _check_newline (STMT *stmt, char c)
 {
-  stmt->unget = (c != '\n');
+  stmt->stay = (c != '\n');
   if (stmt->state == NL_PATTERN)
     {
       stmt->state = PATTERN;
@@ -108,19 +108,19 @@ Plaintext_read (char *path)
 
   STMT *stmt = (STMT *)malloc (sizeof (STMT)); /*statement struct for FSM*/
   stmt->state = START;
-  stmt->unget = false;
+  stmt->stay = false;
 
   while ((read = fread (line, 1, PLAINTEXT_BUF_SIZE, text)))
     {
       ptr = line;
-      stmt->unget = false;
+      stmt->stay = false;
 
       while (ptr < line + read)
         {
           c = *ptr;
-          if (!stmt->unget)
+          if (!stmt->stay)
             ptr++;
-          stmt->unget = false;
+          stmt->stay = false;
 
           switch (stmt->state)
             {
@@ -135,7 +135,7 @@ Plaintext_read (char *path)
                 case '\n':
                 case '\r':
                   stmt->state = PATTERN;
-                  stmt->unget = true;
+                  stmt->stay = true;
                   break;
                 default:
                   stmt->state = ERROR;
