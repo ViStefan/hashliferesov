@@ -5,6 +5,7 @@ tst()
     echo $1
     ../src/hashlife read $1
     echo
+
 }
 
 tst test1.cells
