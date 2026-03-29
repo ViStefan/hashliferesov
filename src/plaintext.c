@@ -1,9 +1,11 @@
 #include <errno.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/param.h>
+#include <sys/types.h>
 
 #include "plaintext.h"
 #define PLAINTEXT_BUF_SIZE 8
@@ -18,40 +20,132 @@ typedef enum
   ERROR
 } STATE;
 
-typedef struct STMT
+typedef struct STATE_T
 {
-  STATE state; /*statement; value from enum*/
-  bool stay;  /*flag indicating whether to read new char*/
-} STMT;
+  STATE state; /* statement; value from enum */
+  bool stay;   /* flag indicating whether to read new char */
+} STATE_T;
 
-static void
-_update_sizes (size_t *length, size_t *width, size_t *height)
+BYTESBUFFER_T
+*Buffer_init (void)
 {
-  (*height)++;
-  *width = MAX (*length, *width);
-  *length = 0;
+  BYTESBUFFER_T *bytes_buffer
+      = (BYTESBUFFER_T *)calloc (1, sizeof (BYTESBUFFER_T));
+
+  bytes_buffer->bytes = (BYTE_T **)malloc (sizeof (BYTE_T *));
+  bytes_buffer->bytes[0] = (BYTE_T *)malloc (sizeof (BYTE_T));
+  bytes_buffer->w = 0;
+  bytes_buffer->h = 0;
+  return bytes_buffer;
+}
+
+void
+Buffer_set_bit (BYTESBUFFER_T *b, bool value)
+{
+#define current_byte (b->bytes[b->h][b->w / 8])
+  switch (b->w % 8)
+    {
+    case 0:
+      current_byte.b0 = value;
+      break;
+    case 1:
+      current_byte.b1 = value;
+      break;
+    case 2:
+      current_byte.b2 = value;
+      break;
+    case 3:
+      current_byte.b3 = value;
+      break;
+    case 4:
+      current_byte.b4 = value;
+      break;
+    case 5:
+      current_byte.b5 = value;
+      break;
+    case 6:
+      current_byte.b6 = value;
+      break;
+    case 7:
+      current_byte.b7 = value;
+      break;
+    }
+#undef current_byte
+
+  if (b->w / 8 < ++(b->w) / 8)
+    {
+      /* reallocate current line if byte border reached */
+      b->bytes[b->h] = (BYTE_T *)realloc (b->bytes[b->h],
+                                          (b->w / 8 + 1) * sizeof (BYTE_T));
+    }
+}
+
+bool
+Buffer_get_bit (BYTESBUFFER_T *b, size_t x, size_t y)
+{
+  BYTE_T req_byte = b->bytes[y][x / 8];
+  switch (x % 8)
+    {
+    case 0:
+      return req_byte.b0;
+      break;
+    case 1:
+      return req_byte.b1;
+      break;
+    case 2:
+      return req_byte.b2;
+      break;
+    case 3:
+      return req_byte.b3;
+      break;
+    case 4:
+      return req_byte.b4;
+      break;
+    case 5:
+      return req_byte.b5;
+      break;
+    case 6:
+      return req_byte.b6;
+      break;
+    case 7:
+      return req_byte.b7;
+      break;
+    };
+  return 0;
 }
 
 static void
-_read_pattern_chunk (STMT *stmt, char c, size_t *length, size_t *width,
-                     size_t *height)
+_update_sizes (size_t *max_width, BYTESBUFFER_T *buffer)
+{
+  *max_width = MAX (buffer->w, *max_width);
+  buffer->w = 0;
+
+  /* appending new string with one new zero byte */
+  buffer->bytes = (BYTE_T **)realloc (buffer->bytes,
+                                      (++buffer->h + 1) * sizeof (BYTE_T *));
+  buffer->bytes[buffer->h] = (BYTE_T *)calloc (1, sizeof (BYTE_T));
+}
+
+static void
+_read_pattern_chunk (STATE_T *stmt, char c, size_t *max_width,
+                     BYTESBUFFER_T *buffer)
 {
   switch (c)
     {
-    case '.':
     case 'O':
-      (*length)++;
+    case '.':
+      Buffer_set_bit (buffer, c == 'O');
       stmt->state = PATTERN;
       break;
 
     case '\r':
       stmt->state = NL_PATTERN;
-      _update_sizes (length, width, height);
+      _update_sizes (max_width, buffer);
       break;
 
     case '\n':
       stmt->state = PATTERN;
-      _update_sizes (length, width, height);
+      _update_sizes (max_width, buffer);
       break;
 
     default:
@@ -60,7 +154,7 @@ _read_pattern_chunk (STMT *stmt, char c, size_t *length, size_t *width,
 }
 
 static void
-_check_newline (STMT *stmt, char c)
+_check_newline (STATE_T *stmt, char c)
 {
   stmt->stay = (c != '\n');
   if (stmt->state == NL_PATTERN)
@@ -74,7 +168,7 @@ _check_newline (STMT *stmt, char c)
 }
 
 static void
-_read_comment_chunk (STMT *stmt, char c)
+_read_comment_chunk (STATE_T *stmt, char c)
 {
   switch (c)
     {
@@ -93,6 +187,9 @@ _read_comment_chunk (STMT *stmt, char c)
 BYTESBUFFER_T *
 Plaintext_read (char *path)
 {
+  /* final buffer for storing pattern bit-per-cell; empty initially */
+  BYTESBUFFER_T *bytes_buffer = Buffer_init ();
+
   FILE *text = fopen (path, "r");
   if (text == NULL)
     {
@@ -101,12 +198,12 @@ Plaintext_read (char *path)
     }
 
   char *line = (char *)malloc (PLAINTEXT_BUF_SIZE);
-  size_t width = 0, /* max length of line in pattern file */
-      height = 0;   /* number of pattern file lines excluding comments */
-  size_t length = 0, read;
+  size_t max_width = 0; /* max length of line in pattern file */
+  size_t read;
   char *ptr, c;
 
-  STMT *stmt = (STMT *)malloc (sizeof (STMT)); /*statement struct for FSM*/
+  STATE_T *stmt
+      = (STATE_T *)malloc (sizeof (STATE_T)); /*statement struct for FSM*/
   stmt->state = START;
   stmt->stay = false;
 
@@ -118,10 +215,6 @@ Plaintext_read (char *path)
       while (ptr < line + read)
         {
           c = *ptr;
-          if (!stmt->stay)
-            ptr++;
-          stmt->stay = false;
-
           switch (stmt->state)
             {
             case START:
@@ -148,7 +241,7 @@ Plaintext_read (char *path)
               break;
 
             case PATTERN:
-              _read_pattern_chunk (stmt, c, &length, &width, &height);
+              _read_pattern_chunk (stmt, c, &max_width, bytes_buffer);
               break;
 
             case NL_COMMENT:
@@ -162,6 +255,10 @@ Plaintext_read (char *path)
               perror ("plaintext");
               exit (errno);
             }
+
+          if (!stmt->stay)
+            ptr++;
+          stmt->stay = false;
         }
     }
 
@@ -171,15 +268,34 @@ Plaintext_read (char *path)
       exit (errno);
     }
 
-  printf ("max_line_len: %lu\n", width);
-  printf ("linenum: %lu\n", height);
-  // TODO: now init BYTESBUFFER with this params
+  printf ("max_line_len: %lu\n", max_width);
+  printf ("linenum: %lu\n", bytes_buffer->h);
+  // min size of line is 8 bits
+  bytes_buffer->w = (max_width > 8) ? (max_width) : (8);
+  // printf ("%zu %zu\n", bytes_buffer->w, bytes_buffer->h);
+
+  for (size_t i = 0; i < bytes_buffer->h; ++i)
+    {
+
+      bytes_buffer->bytes[i] = (BYTE_T *)realloc (
+          bytes_buffer->bytes[i], (bytes_buffer->w / 8 + 1) * sizeof (BYTE_T));
+    }
 
   fclose (text);
   free (stmt);
   free (line);
 
-  return NULL;
+  for (size_t i = 0; i < bytes_buffer->h; ++i)
+    {
+		printf("line %3zu  ", i + 1);
+      for (size_t j = 0; j < bytes_buffer->w; ++j)
+        {
+          printf ("%d", Buffer_get_bit (bytes_buffer, j, i));
+        }
+      printf ("\n");
+    }
+
+  return bytes_buffer;
 }
 
 int Plaintext_get (BYTESBUFFER_T *buf, size_t x, size_t y);
